@@ -1,4 +1,5 @@
-const Interface = require('./interface.js')
+const path = require('path')
+const Interface = require(path.resolve('/home/david/code/js/mia', 'interface.js'))
 
 // TODO:
 // + tab autcompletion
