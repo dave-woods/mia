@@ -1,6 +1,7 @@
 const Interface = require('./interface.js')
 
 // TODO:
+// + tab autcompletion
 // - randomise name Mia calls you
 // - give Mia more things to do
 // - abstract dialog to separate file
@@ -26,11 +27,18 @@ const mia = {
     Interface.reader.prompt()
   },
   on: (event, callback) => Interface.reader.on(event, callback),
-  exit: () => Interface.reader.close()
+  exit: () => Interface.reader.close(),
+  commands: [ '.exit', 'say' ]
 }
 
 // console.log('\x1Bc') // clears terminal screen
-mia.init({ promptChar: '#' })
+mia.init({
+  promptChar: '#',
+  completer: (line) => {
+    const hits = mia.commands.filter(c => c.startsWith(line))
+    return [ hits.length ? hits : mia.commands, line ]
+  }
+})
 
 mia.on('line', line => {
   if (mia.state.shouldExit) {
