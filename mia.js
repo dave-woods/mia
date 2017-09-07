@@ -19,6 +19,7 @@ const Interface = require(path.resolve('/home/david/code/js/mia', 'interface.js'
 // - improve help menu
 // - improve natural language interpretation (external package?)
 // - split input text to array
+// - put errors to a logfile rather than on-screen
 
 const mia = {
   state: {
@@ -37,7 +38,7 @@ const mia = {
   },
   on: (event, callback) => Interface.reader.on(event, callback),
   exit: () => Interface.reader.close(),
-  commands: [ 'exit', 'say', 'open', 'help' ]
+  commands: [ 'exit', 'say', 'open', 'help', 'show me my' ]
 }
 
 // console.log('\x1Bc') // clears terminal screen
@@ -75,6 +76,15 @@ mia.on('line', line => {
       if (error) {
         console.error(`exec error: ${error}`)
       }
+      mia.say('What else can I do for you?')
+    })
+  } else if (input.startsWith('show me my ')) {
+    const str = input.slice(11)
+    // NOT SAFE! SANITISE USER INPUT!!!
+    exec(`neofetch --off | grep -i '${str}'`, (error, stdout, stderr) => {
+      if (error) {
+        mia.say('I\'m not sure how to show you that... :/', true)
+      } else mia.say(`I found this:\n${stdout}`, true)
       mia.say('What else can I do for you?')
     })
   } else if (input === 'help') {

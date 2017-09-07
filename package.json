@@ -1,6 +1,6 @@
 {
   "name": "mia",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "AI command line task-runner",
   "bin": {
 	"mia": "bin/mia"
