@@ -1,4 +1,6 @@
 const path = require('path')
+const exec = require('child_process').exec
+
 const Interface = require(path.resolve('/home/david/code/js/mia', 'interface.js'))
 
 // TODO:
@@ -11,6 +13,12 @@ const Interface = require(path.resolve('/home/david/code/js/mia', 'interface.js'
 // - extra personality (emoticons etc)
 // - ASCII "graphics"?
 // - equivalent terms dictionary (eg 'my name' = 'Dave')
+// - sanitise user input (for open command etc)
+// - add exit/error codes
+// - add more states (eg shouldPromptForInput)
+// - improve help menu
+// - improve natural language interpretation (external package?)
+// - split input text to array
 
 const mia = {
   state: {
@@ -29,7 +37,7 @@ const mia = {
   },
   on: (event, callback) => Interface.reader.on(event, callback),
   exit: () => Interface.reader.close(),
-  commands: [ '.exit', 'say' ]
+  commands: [ 'exit', 'say', 'open', 'help' ]
 }
 
 // console.log('\x1Bc') // clears terminal screen
@@ -42,23 +50,37 @@ mia.init({
 })
 
 mia.on('line', line => {
+  const input = line.toLowerCase().trim()
   if (mia.state.shouldExit) {
-    if (line.match(/^y(es)?$/i) || line.trim() === '') {
+    if (input.match(/^y(es)?$/i) || input === '') {
       mia.exit()
-    } else if (line.match(/^n(o)?$/i)) {
+    } else if (input.match(/^n(o)?$/i)) {
       mia.state.shouldExit = false
       mia.say('Okay, darlin\'. I\'ll stay.')
-    } else if (line.match(/^maybe$/i)) {
+    } else if (input.match(/^maybe$/i)) {
       mia.say('Well, make up your mind, honey! Should I leave?')
     } else {
       mia.state.shouldExit = false
       mia.say('That doesn\'t sound like an answer to me... I guess I\'ll stay?')
     }
-  } else if (line.toLowerCase().startsWith('say ')) {
+  } else if (input.startsWith('say ')) {
     const str = line.slice(4)
     mia.say(`"${str}"${str === 'something' ? ' ;P' : ''}`, true)
     mia.say('What else can I do for you?')
-  } else if (line === '.exit') {
+  } else if (input.startsWith('open ')) {
+    const str = line.slice(5)
+    mia.say(`Opening ${str}...`, true)
+    // NOT SAFE! SANITISE USER INPUT!!!
+    exec(`xdg-open "${str}"`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`)
+      }
+      mia.say('What else can I do for you?')
+    })
+  } else if (input === 'help') {
+    mia.say(`Try any of these:\n${mia.commands.join('\n')}`, true)
+    mia.say('What else can I do for you?')
+  } else if (input === 'exit') {
     mia.exit()
   } else {
     mia.say('Well aren\'t you the sweetest thing?')
