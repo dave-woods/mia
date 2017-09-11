@@ -1,7 +1,5 @@
-const path = require('path')
 const exec = require('child_process').exec
-
-const Interface = require(path.resolve('/home/david/code/js/mia', 'interface.js'))
+const readline = require('readline')
 
 // TODO:
 // + tab autcompletion
@@ -16,9 +14,9 @@ const Interface = require(path.resolve('/home/david/code/js/mia', 'interface.js'
 // - sanitise user input (for open command etc)
 // - add exit/error codes
 // - add more states (eg shouldPromptForInput)
-// - improve help menu
+// - improve help menu -> make mia.commands an object (eg) say:{name:'say',fn:() => {},desc:'blah'}
 // - improve natural language interpretation (external package?)
-// - split input text to array
+// + split input text to array
 // - put errors to a logfile rather than on-screen
 
 const mia = {
@@ -26,74 +24,122 @@ const mia = {
     busy: false,
     shouldExit: false
   },
-  say: (dialog, noPrompt = false) => {
-    console.log(`\n${dialog}`)
-    !noPrompt && Interface.reader.prompt()
+  cli: {
+    pout: process.stdout,
+    clearLine: readline.clearLine,
+    cursorTo: readline.cursorTo
   },
-  ask: (dialog, callback) => Interface.reader.question(dialog, callback),
-  init: (opts) => {
-    Interface.reader = Interface.init(opts)
-    console.log('Howdy! I\'m Mia. What can I do for you today?')
-    Interface.reader.prompt()
-  },
-  on: (event, callback) => Interface.reader.on(event, callback),
-  exit: () => Interface.reader.close(),
-  commands: [ 'exit', 'say', 'open', 'help', 'show me my' ]
+  commands: [ 'exit', 'say', 'open', 'help', 'show me my' ],
+  otherCommands: [ 'nothing' ]
 }
+
+mia.init = (opts) => {
+  mia.cli.main = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: `${(opts && opts.promptChar) || '>'} `,
+    completer: opts && opts.completer
+  })
+  console.log('Hi there! I\'m Mia. What can I do for you today?')
+  mia.cli.main.prompt()
+}
+
+mia.say = (dialog, noPrompt = false) => {
+  console.log(`\n${dialog}`)
+  !noPrompt && mia.cli.main.prompt()
+}
+
+mia.ask = (dialog, callback) => mia.cli.main.question(dialog, callback)
+
+mia.on = (event, callback) => mia.cli.main.on(event, callback)
+
+mia.exit = () => mia.cli.main.close()
 
 // console.log('\x1Bc') // clears terminal screen
 mia.init({
   promptChar: '#',
   completer: (line) => {
-    const hits = mia.commands.filter(c => c.startsWith(line))
+    const hits = [...mia.commands, ...mia.otherCommands].filter(c => c.startsWith(line))
     return [ hits.length ? hits : mia.commands, line ]
   }
 })
 
 mia.on('line', line => {
-  const input = line.toLowerCase().trim()
+  const [ command, ...args ] = line.trim().split(' ')
   if (mia.state.shouldExit) {
-    if (input.match(/^y(es)?$/i) || input === '') {
+    if (command.match(/^y(es)?$/i) || command === '') {
       mia.exit()
-    } else if (input.match(/^n(o)?$/i)) {
+    } else if (command.match(/^n(o)?$/i)) {
       mia.state.shouldExit = false
-      mia.say('Okay, darlin\'. I\'ll stay.')
-    } else if (input.match(/^maybe$/i)) {
-      mia.say('Well, make up your mind, honey! Should I leave?')
+      mia.say('Okay. I\'ll stay. :)')
+    } else if (command.match(/^maybe$/i)) {
+      mia.say(':|', true)
+      setTimeout(() => {
+        mia.say('Should I leave?')
+      }, 500)
     } else {
       mia.state.shouldExit = false
       mia.say('That doesn\'t sound like an answer to me... I guess I\'ll stay?')
     }
-  } else if (input.startsWith('say ')) {
-    const str = line.slice(4)
-    mia.say(`"${str}"${str === 'something' ? ' ;P' : ''}`, true)
-    mia.say('What else can I do for you?')
-  } else if (input.startsWith('open ')) {
-    const str = line.slice(5)
-    mia.say(`Opening ${str}...`, true)
-    // NOT SAFE! SANITISE USER INPUT!!!
-    exec(`xdg-open "${str}"`, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`exec error: ${error}`)
-      }
+    return
+  }
+
+  let str
+  switch (command.toLowerCase()) {
+    case 'say':
+      str = args.join(' ')
+      mia.say(`"${str}"${str === 'something' ? ' ;P' : ''}`, true)
       mia.say('What else can I do for you?')
-    })
-  } else if (input.startsWith('show me my ')) {
-    const str = input.slice(11)
-    // NOT SAFE! SANITISE USER INPUT!!!
-    exec(`neofetch --off | grep -i '${str}'`, (error, stdout, stderr) => {
-      if (error) {
-        mia.say('I\'m not sure how to show you that... :/', true)
-      } else mia.say(`I found this:\n${stdout}`, true)
+      break
+    case 'open':
+      str = args.join(' ')
+      mia.say(`Opening ${str}...`, true)
+      // NOT SAFE! SANITISE USER INPUT!!!
+      exec(`xdg-open "${str}"`, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`exec error: ${error}`)
+        }
+        mia.say('What else can I do for you?')
+      })
+      break
+    case 'show':
+      // Only 'show me my' working for now
+      if (args.length < 3 || args[0].toLowerCase() !== 'me' || args[1].toLowerCase() !== 'my') break
+      str = args.slice(2).join(' ')
+      // NOT SAFE! SANITISE USER INPUT!!!
+      exec(`neofetch --off | grep -i '${str}'`, (error, stdout, stderr) => {
+        if (error) {
+          mia.say('I\'m not sure how to show you that... :/', true)
+        } else mia.say(`I found this:\n${stdout}`, true)
+        mia.say('What else can I do for you?')
+      })
+      break
+    case 'nothing':
+      mia.say('Okay. Now doing nothing...', true)
+      let percent = 0
+      const interval = setInterval(() => {
+        if (percent > 100) {
+          mia.say('Successfully did nothing.', true)
+          mia.say('What else can I do for you?')
+          clearInterval(interval)
+        } else {
+          mia.cli.clearLine(process.stdout, 0)
+          mia.cli.cursorTo(process.stdout, 0)
+          mia.cli.pout.write(`${percent}% of nothing completed.`)
+          percent++
+        }
+      }, 10)
+      break
+    case 'help':
+      mia.say(`Try any of these:\n${mia.commands.join('\n')}`, true)
       mia.say('What else can I do for you?')
-    })
-  } else if (input === 'help') {
-    mia.say(`Try any of these:\n${mia.commands.join('\n')}`, true)
-    mia.say('What else can I do for you?')
-  } else if (input === 'exit') {
-    mia.exit()
-  } else {
-    mia.say('Well aren\'t you the sweetest thing?')
+      break
+    case 'exit':
+      mia.exit()
+      break
+    default:
+      mia.say('Sorry, I\'m not sure how to do that yet. I\'ll do my best to learn!')
+      break
   }
 })
 
@@ -107,5 +153,5 @@ mia.on('SIGINT', () => {
 })
 
 mia.on('close', () => {
-  mia.say('Bye bye, sweetheart.', true)
+  mia.say('Bye for now.', true)
 })
