@@ -20,5 +20,42 @@
 		}
 	  }
 	}
+  },
+  "commands": {
+    "exit": {
+	  "name": "exit",
+	  "description": "Exits Mia",
+	  "example": "exit"
+	},
+	"help": {
+	  "name": "help",
+	  "description": "Displays possible commands and their functionality",
+	  "example": "help"
+	},
+	"nothing": {
+	  "name": "nothing",
+	  "description": "Does nothing",
+	  "example": "nothing"
+	},
+	"open": {
+	  "name": "open",
+	  "description": "Opens a file with an external application",
+	  "example": "open photo.png"
+	},
+	"say": {
+	  "name": "say",
+	  "description": "Says something",
+	  "example": "say something"
+	},
+	"show": {
+	  "name": "show",
+	  "description": "Display information relating to the system",
+	  "example": "show me my gpu"
+	},
+	"who": {
+	  "name": "who",
+	  "description": "Asks Mia who someone is (no guarantees she'll know!)",
+	  "example": "who are you"
+	}
   }
 }

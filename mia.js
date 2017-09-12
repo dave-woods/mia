@@ -16,7 +16,7 @@ const dict = require('./dictionary.json')
 // - sanitise user input (for open command etc)
 // - add exit/error codes
 // - add more states (eg shouldPromptForInput)
-// - improve help menu -> make mia.commands an object (eg) say:{name:'say',fn:() => {},desc:'blah'}
+// + improve help menu -> make mia.commands an object (eg) say:{name:'say',fn:() => {},desc:'blah'}
 // - improve natural language interpretation (external package?)
 // + split input text to array
 // - put errors to a logfile rather than on-screen
@@ -32,8 +32,6 @@ const mia = {
     clearLine: readline.clearLine,
     cursorTo: readline.cursorTo
   },
-  commands: [ 'exit', 'say', 'open', 'help', 'show me my', 'who' ],
-  otherCommands: [ 'nothing' ],
   dictionary: dict
 }
 
@@ -63,8 +61,9 @@ mia.exit = () => mia.cli.main.close()
 mia.init({
   promptChar: '#',
   completer: (line) => {
-    const hits = [...mia.commands, ...mia.otherCommands].filter(c => c.startsWith(line))
-    return [ hits.length ? hits : mia.commands, line ]
+    const cmds = Object.keys(mia.dictionary.commands)
+    const hits = [...cmds].filter(c => c.startsWith(line))
+    return [ hits.length ? hits : cmds, line ]
   }
 })
 
@@ -143,14 +142,18 @@ mia.on('line', line => {
       }, 10)
       break
     case 'help':
-      mia.say(`Try any of these:\n${mia.commands.join('\n')}`, true)
+      mia.say('Try any of these:', true)
+      let cmds = Object.values(mia.dictionary.commands)
+      for (let i = 0; i < cmds.length; i++) {
+        mia.cli.pout.write(`${cmds[i].name.padEnd(16)}\t${cmds[i].description}\n`)
+      }
       mia.say('What else can I do for you?')
       break
     case 'exit':
       mia.exit()
       break
     case 'dict':
-      console.log(mia.dictionary)
+      console.log('DEV ONLY', mia.dictionary)
       break
     case 'who':
       if (args.length < 2 || !args[0].match(/^(is|are|am)$/i)) {
