@@ -1,0 +1,24 @@
+{
+  "entities": {
+	"mia": {
+	  "name": "Mia",
+	  "pronouns": {
+		"user": {
+		  "subj": [ "you" ],
+		  "obj": [ "you", "yourself" ],
+		  "poss": [ "your" ]
+		},
+		"self": {
+		  "subj": [ "I" ],
+		  "obj": [ "me", "myself" ],
+		  "poss": [ "my" ]
+		},
+		"other": {
+		  "subj": [ "she" ],
+		  "obj": [ "her", "herself" ],
+		  "poss": [ "her" ]
+		}
+	  }
+	}
+  }
+}

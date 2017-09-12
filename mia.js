@@ -1,6 +1,8 @@
 const exec = require('child_process').exec
 const readline = require('readline')
 
+const dict = require('./dictionary.json')
+
 // TODO:
 // + tab autcompletion
 // - randomise name Mia calls you
@@ -18,6 +20,7 @@ const readline = require('readline')
 // - improve natural language interpretation (external package?)
 // + split input text to array
 // - put errors to a logfile rather than on-screen
+// - have a dev-mode env variable for access to debug cmds
 
 const mia = {
   state: {
@@ -29,8 +32,9 @@ const mia = {
     clearLine: readline.clearLine,
     cursorTo: readline.cursorTo
   },
-  commands: [ 'exit', 'say', 'open', 'help', 'show me my' ],
-  otherCommands: [ 'nothing' ]
+  commands: [ 'exit', 'say', 'open', 'help', 'show me my', 'who' ],
+  otherCommands: [ 'nothing' ],
+  dictionary: dict
 }
 
 mia.init = (opts) => {
@@ -84,6 +88,11 @@ mia.on('line', line => {
     return
   }
 
+  if (command === '') {
+    mia.cli.main.prompt()
+    return
+  }
+
   let str
   switch (command.toLowerCase()) {
     case 'say':
@@ -104,7 +113,10 @@ mia.on('line', line => {
       break
     case 'show':
       // Only 'show me my' working for now
-      if (args.length < 3 || args[0].toLowerCase() !== 'me' || args[1].toLowerCase() !== 'my') break
+      if (args.length < 3 || args[0].toLowerCase() !== 'me' || args[1].toLowerCase() !== 'my') {
+        mia.cli.main.prompt()
+        break
+      }
       str = args.slice(2).join(' ')
       // NOT SAFE! SANITISE USER INPUT!!!
       exec(`neofetch --off | grep -i '${str}'`, (error, stdout, stderr) => {
@@ -136,6 +148,22 @@ mia.on('line', line => {
       break
     case 'exit':
       mia.exit()
+      break
+    case 'dict':
+      console.log(mia.dictionary)
+      break
+    case 'who':
+      if (args.length < 2 || !args[0].match(/^(is|are|am)$/i)) {
+        mia.cli.main.prompt() // fall through to default/post-switch?
+        break
+      }
+      let { name, pronouns } = mia.dictionary.entities.mia
+      if ([ name, ...pronouns.user.obj ].includes(args[1])) {
+        mia.say(`${pronouns.self.subj[0]} am ${name}`, true) // silly
+      } else {
+        mia.say('I\'m not sure... :/', true)
+      }
+      mia.say('What else can I do for you?')
       break
     default:
       mia.say('Sorry, I\'m not sure how to do that yet. I\'ll do my best to learn!')
